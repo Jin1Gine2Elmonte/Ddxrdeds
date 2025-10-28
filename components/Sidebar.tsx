@@ -1,22 +1,40 @@
 
 import React, { useState } from 'react';
-import type { Config } from '../types';
-import { SettingsIcon, CodeIcon, ChevronDownIcon, ChevronUpIcon } from './icons/Icons';
+import type { Config, LocalSource } from '../types';
+import { SettingsIcon, CodeIcon, ChevronDownIcon, ChevronUpIcon, FileTextIcon, PlusIcon, TrashIcon } from './icons/Icons';
 
 interface SidebarProps {
     config: Config;
     onConfigChange: (newConfig: Config) => void;
+    localSources: LocalSource[];
+    onLocalSourcesChange: (sources: LocalSource[]) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ config, onConfigChange }) => {
-    const [isExpanded, setIsExpanded] = useState(true);
+export const Sidebar: React.FC<SidebarProps> = ({ config, onConfigChange, localSources, onLocalSourcesChange }) => {
+    const [isConfigExpanded, setIsConfigExpanded] = useState(true);
+    const [isSourcesExpanded, setIsSourcesExpanded] = useState(true);
+
+    const [newSourceTitle, setNewSourceTitle] = useState('');
+    const [newSourceContent, setNewSourceContent] = useState('');
+
 
     const handleConfigChange = <T extends keyof Config,>(key: T, value: Config[T]) => {
         onConfigChange({ ...config, [key]: value });
     };
 
+    const handleAddSource = () => {
+        if (!newSourceTitle.trim() || !newSourceContent.trim()) return;
+        onLocalSourcesChange([...localSources, { id: Date.now().toString(), title: newSourceTitle, content: newSourceContent }]);
+        setNewSourceTitle('');
+        setNewSourceContent('');
+    };
+
+    const handleRemoveSource = (id: string) => {
+        onLocalSourcesChange(localSources.filter(source => source.id !== id));
+    };
+
     return (
-        <aside className="w-80 bg-gray-800 border-r border-gray-700 p-4 flex flex-col h-screen overflow-y-auto">
+        <aside className="w-96 bg-gray-800 border-r border-gray-700 p-4 flex flex-col h-screen overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-xl font-bold text-gray-400 flex items-center">
                     <CodeIcon className="w-6 h-6 mr-2 text-blue-500" />
@@ -24,28 +42,73 @@ export const Sidebar: React.FC<SidebarProps> = ({ config, onConfigChange }) => {
                 </h1>
             </div>
 
-            <div className="mb-6">
-                <label htmlFor="system-instruction" className="block text-sm font-medium text-gray-500 mb-2">System Instruction</label>
-                <textarea
-                    id="system-instruction"
-                    rows={6}
-                    className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-sm text-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    value={config.systemInstruction}
-                    onChange={(e) => handleConfigChange('systemInstruction', e.target.value)}
-                    placeholder="e.g., You are a helpful AI assistant."
-                />
+            <div className="border-t border-gray-700 pt-4 mb-4">
+                 <button onClick={() => setIsSourcesExpanded(!isSourcesExpanded)} className="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-400 mb-2 focus:outline-none">
+                    <span className="flex items-center">
+                        <FileTextIcon className="w-5 h-5 mr-2" />
+                        Sources
+                    </span>
+                    {isSourcesExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />}
+                </button>
+               {isSourcesExpanded && (
+                <div className="space-y-4 animate-fade-in pl-1">
+                    <div className="space-y-2">
+                        <input
+                            type="text"
+                            placeholder="Source Title"
+                            value={newSourceTitle}
+                            onChange={(e) => setNewSourceTitle(e.target.value)}
+                             className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-sm text-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                        <textarea
+                            rows={4}
+                            placeholder="Source content..."
+                            value={newSourceContent}
+                            onChange={(e) => setNewSourceContent(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-sm text-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                        <button onClick={handleAddSource} className="w-full flex items-center justify-center gap-2 bg-blue-500/80 hover:bg-blue-500 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+                            <PlusIcon className="w-4 h-4" />
+                            Add Source
+                        </button>
+                    </div>
+                     {localSources.length > 0 && (
+                        <div className="border-t border-gray-700 pt-2 space-y-2">
+                            {localSources.map(source => (
+                                <div key={source.id} className="bg-gray-700/50 p-2 rounded-md flex justify-between items-center">
+                                    <p className="text-sm text-gray-400 truncate flex-1 pr-2">{source.title}</p>
+                                    <button onClick={() => handleRemoveSource(source.id)} className="text-gray-500 hover:text-red-500 p-1">
+                                        <TrashIcon className="w-4 h-4"/>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+               )}
             </div>
 
             <div className="border-t border-gray-700 pt-4">
-                 <button onClick={() => setIsExpanded(!isExpanded)} className="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-400 mb-2 focus:outline-none">
+                 <button onClick={() => setIsConfigExpanded(!isConfigExpanded)} className="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-400 mb-2 focus:outline-none">
                     <span className="flex items-center">
                         <SettingsIcon className="w-5 h-5 mr-2" />
                         Configuration
                     </span>
-                    {isExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />}
+                    {isConfigExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />}
                 </button>
-               {isExpanded && (
-                <div className="space-y-4 animate-fade-in">
+               {isConfigExpanded && (
+                <div className="space-y-4 animate-fade-in pl-1">
+                     <div className="mb-6">
+                        <label htmlFor="system-instruction" className="block text-sm font-medium text-gray-500 mb-2">System Instruction</label>
+                        <textarea
+                            id="system-instruction"
+                            rows={4}
+                            className="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-sm text-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            value={config.systemInstruction}
+                            onChange={(e) => handleConfigChange('systemInstruction', e.target.value)}
+                            placeholder="e.g., You are a helpful AI assistant."
+                        />
+                    </div>
                     <div className="flex items-center justify-between">
                          <label htmlFor="grounding" className="text-sm text-gray-500">Google Search Grounding</label>
                          <label className="relative inline-flex items-center cursor-pointer">

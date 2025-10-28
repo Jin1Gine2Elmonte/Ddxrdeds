@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { CodeIcon, ImageIcon, SearchIcon, SparklesIcon } from './icons/Icons';
+import { CodeIcon, ImageIcon, SearchIcon, SparklesIcon, FileTextIcon } from './icons/Icons';
 
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; description: string }> = ({ icon, title, description }) => (
     <div className="bg-gray-800 p-4 rounded-lg text-center">
@@ -20,7 +20,12 @@ export const WelcomeScreen: React.FC = () => {
                     Your versatile AI assistant. Modify the system prompt, adjust parameters, and interact with text, images, and grounded search results.
                 </p>
             </div>
-            <div className="max-w-3xl w-full grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <FeatureCard 
+                    icon={<FileTextIcon className="w-8 h-8 text-purple-400" />}
+                    title="Source Grounding"
+                    description="Add your own documents for the AI to use as context."
+                />
                 <FeatureCard 
                     icon={<CodeIcon className="w-8 h-8 text-green-500" />}
                     title="Code Generation"

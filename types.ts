@@ -4,6 +4,12 @@ export interface GroundingSource {
     title: string;
 }
 
+export interface LocalSource {
+    id: string;
+    title: string;
+    content: string;
+}
+
 export interface Message {
     id: string;
     role: 'user' | 'model';

@@ -1,42 +1,19 @@
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ChatWindow } from './components/ChatWindow';
 import { PromptInput } from './components/PromptInput';
-import { Chat, GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import type { Message, Config, GroundingSource } from './types';
+import { GoogleGenAI } from "@google/genai";
+import type { Message, Config, GroundingSource, LocalSource } from './types';
 import { DEFAULT_CONFIG } from './constants';
 import { WelcomeScreen } from './components/WelcomeScreen';
 
 const App: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
+    const [localSources, setLocalSources] = useState<LocalSource[]>([]);
     const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const chatRef = useRef<Chat | null>(null);
-
-    const getChatSession = useCallback((newConfig: Config) => {
-        // Do not create a new GoogleGenAI instance on every call.
-        // It should be created once, but for the sake of simplicity in this example
-        // we recreate it to apply new config. A better approach would be to manage this instance.
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-        chatRef.current = ai.chats.create({
-            model: 'gemini-2.5-flash',
-            config: {
-                systemInstruction: newConfig.systemInstruction,
-                temperature: newConfig.temperature,
-                topK: newConfig.topK,
-                topP: newConfig.topP,
-                tools: newConfig.useGrounding ? [{ googleSearch: {} }] : [],
-            },
-        });
-    }, []);
-
-    useEffect(() => {
-        getChatSession(config);
-    }, [config.systemInstruction, config.temperature, config.topP, config.topK, config.useGrounding, getChatSession]);
-
 
     const handleSendMessage = async (prompt: string, image: { data: string; mimeType: string } | null) => {
         if (isLoading) return;
@@ -61,23 +38,45 @@ const App: React.FC = () => {
         setMessages(prev => [...prev, aiMessagePlaceholder]);
 
         try {
-            if (!chatRef.current) {
-                getChatSession(config);
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+
+            const history = messages.map(msg => {
+                const parts: ({ text: string } | { inlineData: { mimeType: string, data: string } })[] = [];
+                if (msg.text) {
+                    parts.push({ text: msg.text });
+                }
+                if (msg.role === 'user' && msg.image) {
+                    const [meta, base64Data] = msg.image.split(',');
+                    const mimeType = meta.match(/:(.*?);/)?.[1];
+                    if (mimeType && base64Data) {
+                        parts.push({ inlineData: { mimeType, data: base64Data } });
+                    }
+                }
+                return { role: msg.role, parts };
+            }).filter(h => h.parts.length > 0);
+
+            let sourceContext = '';
+            if (localSources.length > 0) {
+                const sourceText = localSources.map(s => `Title: ${s.title}\nContent:\n${s.content}`).join('\n\n---\n\n');
+                sourceContext = `Please use the following sources to answer the user's question. Respond with "I don't have enough information in the provided sources" if you cannot answer from the context.\n\nSOURCES:\n${sourceText}\n\n---\n\n`;
             }
 
-            if (!chatRef.current) {
-                throw new Error("Chat session not initialized");
-            }
-
-            // FIX: Correctly construct the 'parts' array for multimodal input to avoid a TypeScript type error.
-            const parts = [];
+            const userParts: ({ text: string } | { inlineData: { mimeType: string, data: string } })[] = [];
             if (image) {
-                parts.push({ inlineData: { data: image.data, mimeType: image.mimeType } });
+                userParts.push({ inlineData: { data: image.data, mimeType: image.mimeType } });
             }
-            parts.push({ text: prompt });
-
-            const result = await chatRef.current.sendMessageStream({
-                message: { parts },
+            userParts.push({ text: `${sourceContext}${prompt}` });
+            
+            const result = await ai.models.generateContentStream({
+                model: 'gemini-2.5-flash',
+                contents: [...history, { role: 'user', parts: userParts }],
+                systemInstruction: config.systemInstruction,
+                generationConfig: {
+                    temperature: config.temperature,
+                    topK: config.topK,
+                    topP: config.topP,
+                },
+                tools: config.useGrounding ? [{ googleSearch: {} }] : [],
             });
             
             let fullText = '';
@@ -116,7 +115,12 @@ const App: React.FC = () => {
 
     return (
         <div className="flex h-screen w-screen bg-gray-900 font-sans">
-            <Sidebar config={config} onConfigChange={setConfig} />
+            <Sidebar 
+                config={config} 
+                onConfigChange={setConfig}
+                localSources={localSources}
+                onLocalSourcesChange={setLocalSources}
+            />
             <main className="flex-1 flex flex-col h-screen">
                 {messages.length === 0 ? (
                     <WelcomeScreen />
