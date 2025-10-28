@@ -1,5 +1,5 @@
-
 export interface GroundingSource {
+    type: 'web' | 'maps';
     uri: string;
     title: string;
 }
@@ -24,4 +24,15 @@ export interface Config {
     topK: number;
     topP: number;
     useGrounding: boolean;
+    useMapsGrounding: boolean;
+    thinkingBudget: number;
+}
+
+export interface ChatSession {
+    id: string;
+    title: string;
+    messages: Message[];
+    config: Config;
+    localSources: LocalSource[];
+    isRenaming?: boolean;
 }

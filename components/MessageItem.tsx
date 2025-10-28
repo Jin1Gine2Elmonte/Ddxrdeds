@@ -1,7 +1,6 @@
-
 import React from 'react';
 import type { Message } from '../types';
-import { UserIcon, SparklesIcon, LinkIcon } from './icons/Icons';
+import { UserIcon, SparklesIcon, LinkIcon, MapPinIcon } from './icons/Icons';
 
 declare var Remarkable: any;
 
@@ -53,8 +52,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
                                     href={source.uri}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs bg-gray-700 hover:bg-gray-600 text-blue-400 px-2 py-1 rounded-full transition-colors"
+                                    className="text-xs bg-gray-700 hover:bg-gray-600 text-blue-400 px-2 py-1 rounded-full transition-colors flex items-center gap-1"
                                 >
+                                    {source.type === 'maps' ? <MapPinIcon className="w-3 h-3"/> : null}
                                     {source.title || new URL(source.uri).hostname}
                                 </a>
                             ))}

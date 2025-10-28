@@ -1,18 +1,27 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { SendIcon, PaperClipIcon, XIcon, LoadingIcon } from './icons/Icons';
 
 interface PromptInputProps {
     onSendMessage: (prompt: string, image: { data: string; mimeType: string } | null) => void;
     isLoading: boolean;
     error: string | null;
+    disabled?: boolean;
 }
 
-export const PromptInput: React.FC<PromptInputProps> = ({ onSendMessage, isLoading, error }) => {
+export const PromptInput: React.FC<PromptInputProps> = ({ onSendMessage, isLoading, error, disabled = false }) => {
     const [prompt, setPrompt] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        // Auto-resize textarea
+        if (textAreaRef.current) {
+            textAreaRef.current.style.height = 'auto';
+            textAreaRef.current.style.height = `${textAreaRef.current.scrollHeight}px`;
+        }
+    }, [prompt]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -50,7 +59,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({ onSendMessage, isLoadi
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!prompt.trim() && !imageFile) return;
+        if (isLoading || disabled || (!prompt.trim() && !imageFile)) return;
 
         let imagePayload = null;
         if (imageFile) {
@@ -85,38 +94,41 @@ export const PromptInput: React.FC<PromptInputProps> = ({ onSendMessage, isLoadi
                             </button>
                         </div>
                     )}
-                    <div className="flex items-center">
+                    <div className="flex items-start">
                         <textarea
+                            ref={textAreaRef}
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Ask Gemini anything, or describe an image..."
-                            className="flex-1 bg-transparent text-gray-400 placeholder-gray-500 focus:outline-none resize-none px-2"
+                            placeholder={disabled ? "Create a new chat to begin" : "Ask Gemini anything, or describe an image..."}
+                            className="flex-1 bg-transparent text-gray-400 placeholder-gray-500 focus:outline-none resize-none px-2 max-h-48"
                             rows={1}
-                            disabled={isLoading}
+                            disabled={isLoading || disabled}
                         />
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            accept="image/*"
-                            className="hidden"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="p-2 text-gray-500 hover:text-blue-500 disabled:opacity-50"
-                            disabled={isLoading}
-                        >
-                            <PaperClipIcon className="w-5 h-5" />
-                        </button>
-                        <button
-                            type="submit"
-                            className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center w-9 h-9"
-                            disabled={isLoading || (!prompt.trim() && !imageFile)}
-                        >
-                            {isLoading ? <LoadingIcon className="w-5 h-5 animate-spin"/> : <SendIcon className="w-5 h-5" />}
-                        </button>
+                        <div className="flex items-center self-end">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept="image/*"
+                                className="hidden"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="p-2 text-gray-500 hover:text-blue-500 disabled:opacity-50"
+                                disabled={isLoading || disabled}
+                            >
+                                <PaperClipIcon className="w-5 h-5" />
+                            </button>
+                            <button
+                                type="submit"
+                                className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center w-9 h-9"
+                                disabled={isLoading || disabled || (!prompt.trim() && !imageFile)}
+                            >
+                                {isLoading ? <LoadingIcon className="w-5 h-5 animate-spin"/> : <SendIcon className="w-5 h-5" />}
+                            </button>
+                        </div>
                     </div>
                 </form>
                 {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
